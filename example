@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import ns4600 as nas
+import getopt
+import sys
+import urllib2
+
+def main(*args):
+    # you might not want these in plaintext...
+    ns_mac = '00:01:02:03:04:05'
+    username = 'admin'
+    password = 'foobar'
+    location = 'http://ns4600.local'
+
+    try:
+        if len(args) > 1:
+            if args[1] == 'wake':
+                nas.wake(ns_mac)
+            elif args[1] == 'shutdown':
+                nas.shutdown(username, password, location)
+            else:
+                usage()
+                raise Exception("Invalid argument")
+        else:
+            usage()
+            raise Exception("Expected at least one argument")
+    except Exception as e:
+        print e
+        return 1
+    else:
+        return 0 # exit errorlessly
+ 
+def usage():
+    print "Usage: " + sys.argv[0] + " [wake | shutdown]"
+
+if __name__ == '__main__':
+    sys.exit(main(*sys.argv))
+
