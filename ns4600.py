@@ -27,6 +27,7 @@ def shutdown(username, password, location):
     can include the port, as in 'http://fooserver:8081'.
 
     """
+    shutdownres = ""
 
     # NAS login needs some cookies
     cj = cookielib.CookieJar()
@@ -53,10 +54,11 @@ def shutdown(username, password, location):
 
     # post shutdown
     shutdown_ms = int(round(time.time() * 1000))
-    shutdown_payload = urllib.urlencode([("rs", "ajax"),
+    shutdown_payload = urllib.urlencode([("rs", "set_shutdown"),
                                          ("rst", ""),
                                          ("rsrnd", shutdown_ms),
-                                         ("rsargs[]", "shutdown")])
-    shutdown_url = location + "/admin/shutdown.php"
+                                         ("rsargs[]", "shutdown"),
+                                         ("rsargs[]", shutdownres)])
+    shutdown_url = location + "/admin/ns_main.php"
     shutdown_response = opener.open(shutdown_url, shutdown_payload)
 
