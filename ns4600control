@@ -1,0 +1,166 @@
+#!/usr/bin/env python
+
+import ns4600 as nas
+import getopt
+import sys
+import re
+import urllib2
+
+def main(*args):
+    # you might not want these in plaintext...
+    helpflag     = False
+    shutdownflag = False
+    wakeflag     = False
+    hostname     = None
+    location     = None
+    username     = 'admin'
+    settingsfile = None
+    password     = None
+    macaddress   = None
+
+    try:
+        opts, args = getopt.getopt(args[1:],
+                                   "f:hm:n:su:vw",
+                                   ["help",
+                                    "hostname=",
+                                    "macaddress=",
+                                    "settingsfile=",
+                                    "shutdown",
+                                    "username=",
+                                    "verbose",
+                                    "wake"])
+    except Exception as e:
+        print str(e)
+        sys.exit(1)
+
+    for var, val in opts:
+        if var in ("-h", "--help"):
+            helpflag = True
+        elif var in ("-m", "--macaddress"):
+            macaddress = val
+        elif var in ("-n", "--hostname"):
+            hostname = val
+            location = "https://" + hostname
+        elif var in ("-f", "--settingsfile"):
+            settingsfile = val
+        elif var in ("-s", "--shutdown"):
+            shutdownflag = True
+        elif var in ("-v", "--verbose"):
+            verbose = True
+        elif var in ("-w", "--wake"):
+            wakeflag = True
+        else:
+            assert False, "unknown option"
+
+    if helpflag:
+        usage()
+        sys.exit(0)
+
+    if (not shutdownflag) and (not wakeflag):
+        usage()
+        raise Exception("--shutdown or --wake is required");
+
+    if shutdownflag and wakeflag:
+        usage()
+        raise Exception("--shutdown and --wake are mutually exclusive");
+
+    if shutdownflag:
+        if settingsfile:
+            tmphost, tmpuser, tmppass, tmpmac = readsettingsfile(settingsfile)
+            if hostname == None:
+                hostname = tmphost
+                location = "https://" + hostname
+            if username == None:
+                username = tmpuser
+            if password == None:
+                password = tmppass
+
+        if location == None:
+            usage()
+            raise Exception("Hostname not provided")
+        if username == None:
+            usage()
+            raise Exception("Username not provided")
+        if password == None:
+            usage()
+            raise Exception("Password not provided")
+
+        nas.shutdown(username, password, location)
+
+    elif wakeflag:
+        if settingsfile:
+            tmphost, tmpuser, tmppass, tmpmac = readsettingsfile(settingsfile)
+            if macaddress == None:
+                macaddress = tmpmac
+
+        if macaddress == None:
+            usage()
+            raise Exception("MAC address not provided")
+
+        nas.wake(macaddress)
+
+def usage():
+    print "Usage: " + sys.argv[0] + " [--wake | --shutdown] "
+    print "    --settingsfile <settingsfile>"
+    print "        Note that the settingsfile is optional"
+    print "        Valid lines in the settingsfile are below"
+    print "        Host: <hostname>"
+    print "        User: <username>"
+    print "        Pass: <password>"
+    print "        MAC:  <macaddress>"
+    print "    --shutdown options:"
+    print "        --hostname <host>"
+    print "        --username <username>"
+    print "    --wake options:"
+    print "        --macaddress <macaddress>"
+
+def readsettingsfile(settingsfile):
+    hostname   = None
+    username   = None
+    password   = None
+    macaddress = None
+
+    f = open(settingsfile, 'r')
+    commentexp = re.compile("^#")
+    hostexp    = re.compile("^Host:\s+(.*)")
+    userexp    = re.compile("^User:\s+(.*)")
+    passexp    = re.compile("^Pass:\s+(.*)")
+    macexp     = re.compile("^MAC:\s+(.*)")
+    
+    for line in f:
+        line.strip()
+
+        result = commentexp.match(line)
+        if result:
+            continue
+
+        result = hostexp.match(line)
+        if result:
+            hostname = result.group(1)
+            continue
+
+        result = userexp.match(line)
+        if result:
+            username = result.group(1)
+            continue
+
+        result = passexp.match(line)
+        if result:
+            password = result.group(1)
+            continue
+
+        result = macexp.match(line)
+        if result:
+            macaddress = result.group(1)
+            continue
+
+    return hostname, username, password, macaddress
+
+if __name__ == '__main__':
+    try:
+        main(*sys.argv)
+        sys.exit(0)
+    except Exception as e:
+        print str(e)
+        sys.exit(1)
+
